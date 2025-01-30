@@ -1,0 +1,61 @@
+version: '3'
+
+services:
+  backend:
+    restart: always
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - 8000:8000
+    env_file:
+      - "./.env.dev"
+    depends_on:
+      - db-postgres
+    volumes:
+      - ./backend:/usr/src/app
+      # - /usr/src/app/__pycache__/ # mb it's needed in prod
+      - static_data:/usr/src/app/staticfiles
+      - media_data:/usr/src/app/media
+
+  db-postgres:
+    image: postgres:15-alpine
+    restart: always
+    env_file:
+      - "./.env.dev"
+    ports:
+      - 5432:5432
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    volumes:
+      - ./nginx/conf.d/:/etc/nginx/conf.d/
+      - static_data:/var/www/static/
+      - media_data:/var/www/media/
+
+    depends_on:
+      - backend
+      - db-postgres
+    ports:
+      - 80:80
+
+  frontend:
+    restart: always
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - 5173:5173
+    env_file:
+      - "./.env.dev"
+    volumes:
+      - ./frontend:/usr/src/app
+      - /usr/src/app/node_modules
+
+volumes:
+  pg_data:
+  static_data:
+  media_data:
