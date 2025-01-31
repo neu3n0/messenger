@@ -1,6 +1,6 @@
 import { AxiosResponse } from 'axios';
 import api from './axios';
-import { TestAppType, UpdateTestAppType } from '../types/testAppTypes';
+import { TestAppType, UpdateTestAppType } from '@/types/testAppTypes';
 
 export const getListTestApp = async (): Promise<AxiosResponse<TestAppType[]>> => {
   return api.get<TestAppType[]>('/test_app/');

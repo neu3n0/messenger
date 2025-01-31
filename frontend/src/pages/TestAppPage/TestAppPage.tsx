@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react"
 
-import { TestAppType, UpdateTestAppType } from "../../types/testAppTypes";
-import { getListTestApp, updateTestApp } from "../../api/testAppApi";
+import { TestAppType, UpdateTestAppType } from "@/types/testAppTypes";
+import { getListTestApp, updateTestApp } from "@/api/testAppApi";
 
 const TestAppPage: React.FC = () => {
   const [data, setData] = useState<TestAppType[] | null>(null);

@@ -1,5 +1,5 @@
 import './App.css'
-import TestAppPage from './pages/TestAppPage/TestAppPage'
+import TestAppPage from '@/pages/TestAppPage/TestAppPage'
 import { HashRouter, Routes, Route } from 'react-router-dom';
 
 export default function App() {
