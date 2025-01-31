@@ -8,5 +8,4 @@ COPY . .
 
 EXPOSE 5173
 
-# CMD ["npm", "start", "--", "--host", "0.0.0.0", "--disable-host-check"]
-CMD ["npm", "run", "dev", "--", "--host"]
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

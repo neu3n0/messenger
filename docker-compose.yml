@@ -39,6 +39,7 @@ services:
     depends_on:
       - backend
       - db-postgres
+      - frontend  # dev
     ports:
       - 80:80
 
