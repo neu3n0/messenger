@@ -5,117 +5,13 @@
   overflow: hidden;
 }
 
-/* Sidebar (contacts list) with fixed width */
-.left-sidebar {
-  width: 300px;
-  background-color: var(--sidebar-bg-color);
-  border-right: 1px solid #ddd;
-  padding: var(--spacing);
-  overflow-y: auto;
-}
-
-/* Sidebar (profile) with fixed width */
-.right-sidebar {
-  width: 300px;
-  background-color: var(--sidebar-bg-color);
-  border-left: 1px solid #ddd;
-  padding: var(--spacing);
-  overflow-y: auto;
-}
-
-/* Chat window occupies remaining space */
-.chat {
-  /* Takes all available space */
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  padding: var(--spacing);
-  overflow: hidden;
-}
-
-/* Styling for chat header */
-.chat-header {
-  display: flex;
-  align-items: center;
-  border-bottom: 1px solid #ddd;
-  padding-bottom: 0.5rem;
-  margin-bottom: 0.5rem;
-  /* Делаем заголовок прилипшим (sticky) в мобильном режиме */
-  position: -webkit-sticky;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
-
-/* Hide Back button by default (desktop mode) */
-.chat-header .back {
-  display: none;
-}
-
-.chat-content {
-  /* Takes all available space */
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  /* Scroll for messages */
-  overflow-y: auto;
-  margin-bottom: 0.5rem;
-}
-
-.chat-input {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-}
-
-.chat-placeholder {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #777;
-  font-size: 1.2rem;
-}
-
 /* Mobile mode */
 @media (max-width: 768px) {
   .App {
     flex-direction: column;
   }
-
-  .left-sidebar,
-  .chat,
-  .right-sidebar {
-    width: 100%;
-    height: 100%;
-    border: none;
-  }
-
-  .chat-placeholder {
-    display: none;
-  }
-
-  .chat-header .back {
-    display: block;
-    margin-right: 1rem;
-  }
-
-  /* Обеспечиваем полную высоту для контейнера чата,
-     чтобы sticky-заголовок корректно работал */
-  .chat {
-    height: 100vh;
-  }
-
-  .chat-content {
-    padding: 1rem;
-  }
-
-  .chat-input {
-    padding: 1rem;
-  }
 }
 
 .hidden {
-  display: none;
+  display: none !important;
 }

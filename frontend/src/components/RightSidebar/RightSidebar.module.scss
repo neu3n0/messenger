@@ -1,0 +1,17 @@
+/* Sidebar (profile) with fixed width */
+.rightSidebar {
+  width: 300px;
+  background-color: var(--sidebar-bg-color);
+  border-left: 1px solid #ddd;
+  padding: var(--spacing);
+  overflow-y: auto;
+}
+
+/* Mobile mode */
+@media (max-width: 768px) {
+  .rightSidebar {
+    width: 100%;
+    height: 100%;
+    border: none;
+  }
+}

@@ -1,0 +1,86 @@
+/* Chat window occupies remaining space */
+.chat {
+  /* Takes all available space */
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing);
+  overflow: hidden;
+}
+
+/* Styling for chat header */
+.chatHeader {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.5rem;
+  /* Делаем заголовок прилипшим (sticky) в мобильном режиме */
+  position: -webkit-sticky;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+/* Hide Back button by default (desktop mode) */
+.chatHeader .back {
+  display: none;
+}
+
+.chatContent {
+  /* Takes all available space */
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  /* Scroll for messages */
+  overflow-y: auto;
+  margin-bottom: 0.5rem;
+}
+
+.chatInput {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.chatPlaceholder {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #777;
+  font-size: 1.2rem;
+}
+
+/* Mobile mode */
+@media (max-width: 768px) {
+  .chat {
+    width: 100%;
+    height: 100%;
+    border: none;
+  }
+
+  .chatPlaceholder {
+    display: none;
+  }
+
+  .chatHeader .back {
+    display: block;
+    margin-right: 1rem;
+  }
+
+  /* Обеспечиваем полную высоту для контейнера чата,
+     чтобы sticky-заголовок корректно работал */
+  .chat {
+    height: 100vh;
+  }
+
+  .chatContent {
+    padding: 1rem;
+  }
+
+  .chatInput {
+    padding: 1rem;
+  }
+}
