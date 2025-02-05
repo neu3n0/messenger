@@ -6,6 +6,8 @@
 
 :root {
   /* Light theme */
+  /* --sidebar-bg-color: #e0e0e0; */
+  --sidebar-bg-color: #f8f9fa;
   --background-color: #f8f9fa;
   --primary-color: #007bff;
   --text-color: #333;
@@ -18,7 +20,9 @@
 
 .dark {
   /* Dark theme */
-  --background-color: #1e1e1e;
+  /* --sidebar-bg-color: #1e1e1e; */
+  --sidebar-bg-color: #2c2c2c;
+  --background-color: #2c2c2c;
   --primary-color: #4dabf7;
   --text-color: #e0e0e0;
 }
