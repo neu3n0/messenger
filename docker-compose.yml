@@ -2,7 +2,7 @@ version: '3'
 
 services:
   backend:
-    image: messenger-backend:latest
+    image: backend:latest
     restart: always
     build:
       context: ./backend
@@ -45,7 +45,7 @@ services:
       - 80:80
 
   frontend:
-    image: messenger-frontend:latest
+    image: frontend:latest
     restart: always
     build:
       context: ./frontend
