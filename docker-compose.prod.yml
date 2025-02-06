@@ -2,7 +2,6 @@ version: '3'
 
 services:
   backend:
-    image: messenger-backend:latest
     restart: always
     build:
       context: ./backend
@@ -14,8 +13,6 @@ services:
     depends_on:
       - db-postgres
     volumes:
-      - ./backend:/usr/src/app
-      # - /usr/src/app/__pycache__/ # mb it's needed in prod
       - static_data:/usr/src/app/staticfiles
       - media_data:/usr/src/app/media
 
@@ -36,27 +33,14 @@ services:
       - ./nginx/conf.d/:/etc/nginx/conf.d/
       - static_data:/var/www/static/
       - media_data:/var/www/media/
+      - ./frontend/build:/usr/share/nginx/html # Frontend static
 
     depends_on:
       - backend
       - db-postgres
-      - frontend  # dev
     ports:
       - 80:80
 
-  frontend:
-    image: messenger-frontend:latest
-    restart: always
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    ports:
-      - 5173:5173
-    env_file:
-      - "./.env.dev"
-    volumes:
-      - ./frontend:/usr/src/app
-      - /usr/src/app/node_modules
 
 volumes:
   pg_data:

@@ -1,17 +1,23 @@
-import './App.css'
-import TestAppPage from '@/pages/TestAppPage/TestAppPage'
-import { HashRouter, Routes, Route } from 'react-router-dom';
+import './App.css';
+
+import {
+  HashRouter,
+  Routes,
+  Route,
+} from 'react-router-dom';
+
+import TestAppPage from '@/pages/TestAppPage/TestAppPage';
+import MainPage from '@/pages/MainPage/MainPage';
 
 export default function App() {
   return (
-    <>
+    <div className="App">
       <HashRouter>
         <Routes>
           <Route path="/test_app" element={<TestAppPage />} />
-          <Route path="/" element={<div>Main Page</div>} />
-          <Route path="*" element={<div>Not Found</div>} />
+          <Route path="*" element={<MainPage />} />
         </Routes>
       </HashRouter>
-    </>
-  )
+    </div>
+  );
 }

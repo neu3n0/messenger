@@ -1,6 +1,17 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+.App {
+  display: flex;
+  height: 100vh;
+  background-color: var(--background-color);
+  overflow: hidden;
+}
+
+/* Mobile mode */
+@media (max-width: 768px) {
+  .App {
+    flex-direction: column;
+  }
+}
+
+.hidden {
+  display: none !important;
 }
