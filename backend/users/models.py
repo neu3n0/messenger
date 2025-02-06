@@ -5,6 +5,8 @@ class User(AbstractUser):
     """
         Custom user model
     """
+
+
     age = models.PositiveIntegerField(
         null=True,
         blank=True,
