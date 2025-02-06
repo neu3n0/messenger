@@ -1,5 +1,8 @@
-To run the project, you need to create a .env.dev file with at least the following parameters:
+## Setup Instructions
 
+To run the project, create a `.env.dev` file in the root directory with at least the following parameters:
+
+```env
 POSTGRES_DB=_
 POSTGRES_USER=_
 POSTGRES_PASSWORD=_
