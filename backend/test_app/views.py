@@ -13,7 +13,7 @@ class TestAppRetrieveUpdateDestroyView(RetrieveUpdateDestroyAPIView):
 class TestAppListCreateView(ListCreateAPIView):
     queryset = TestApp.objects.all()
     serializer_class = TestAppSerializer
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated] # it's already done by default
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
