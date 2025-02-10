@@ -75,3 +75,14 @@ class CustomTokenRefreshView(APIView):
                 max_age=int(settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME'].total_seconds()),
             )
         return response
+    
+class LogoutView(APIView):
+    """
+    Logout view
+    """
+    permission_classes = []
+    def post(self, request, *args, **kwargs):
+        response = Response({'detail': 'Logout successful'}, status=status.HTTP_200_OK)
+        response.delete_cookie('access_token')
+        response.delete_cookie('refresh_token')
+        return response

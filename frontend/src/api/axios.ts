@@ -1,6 +1,8 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import Cookies from 'js-cookie';
 
+import { useAuthStore } from '@/stores/authStore';
+
 const api: AxiosInstance = axios.create({
   baseURL: '/api/',
   headers: {
@@ -33,6 +35,7 @@ api.interceptors.response.use(
         // if we get accessed, then we send original request
         return api(originalRequest);
       } catch (refreshError) {
+        useAuthStore.getState().logout();
         return Promise.reject(refreshError);
       }
     }
