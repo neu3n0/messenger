@@ -4,6 +4,7 @@ from .models import TestApp
 from .serializers import TestAppSerializer
 from .permissioins import IsOwnerOrReadOnly
 
+
 class TestAppRetrieveUpdateDestroyView(RetrieveUpdateDestroyAPIView):
     queryset = TestApp.objects.all()
     serializer_class = TestAppSerializer

@@ -17,25 +17,15 @@ class Chat(models.Model):
         max_length=20,
         choices=CHAT_TYPE_CHOICES,
         default="direct",
-        verbose_name="Chat Type"
+        verbose_name="Chat Type",
     )
 
     title = models.CharField(max_length=255, verbose_name="Chat Title")
-    description = models.TextField(
-        blank=True,
-        null=True,
-        verbose_name="Description"
-    )
+    description = models.TextField(blank=True, null=True, verbose_name="Description")
     participants = models.ManyToManyField(
-        User,
-        through="Participant",
-        related_name="chats",
-        verbose_name="Participants"
+        User, through="Participant", related_name="chats", verbose_name="Participants"
     )
-    created_at = models.DateTimeField(
-        auto_now_add=True,
-        verbose_name="Created At"
-    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")
 
     class Meta:
         verbose_name = "Chat"
@@ -44,30 +34,23 @@ class Chat(models.Model):
 
 class Message(models.Model):
     """
-        Message model
+    Message model
     """
 
     chat = models.ForeignKey(
-        Chat,
-        on_delete=models.CASCADE,
-        related_name="messages",
-        verbose_name="Chat"
+        Chat, on_delete=models.CASCADE, related_name="messages", verbose_name="Chat"
     )
     sender = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
         null=True,
         related_name="sent_messages",
-        verbose_name="Sender"
+        verbose_name="Sender",
     )
     content = models.TextField(verbose_name="Content")
-    created_at = models.DateTimeField(
-        auto_now_add=True,
-        verbose_name="Created At"
-    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")
     is_read = models.BooleanField(default=False, verbose_name="Is Read")
     is_edited = models.BooleanField(default=False, verbose_name="is Edited")
-
 
     class Meta:
         verbose_name = "Message"
@@ -77,7 +60,7 @@ class Message(models.Model):
 
 class Participant(models.Model):
     """
-        Participant model
+    Participant model
     """
 
     ROLE_TYPE_CHOICES = [
@@ -91,23 +74,17 @@ class Participant(models.Model):
         Chat,
         on_delete=models.CASCADE,
         related_name="chat_participants",
-        verbose_name="Chat"
+        verbose_name="Chat",
     )
     user = models.ForeignKey(
-        User, 
+        User,
         on_delete=models.CASCADE,
         related_name="user_participants",
-        verbose_name="User"
+        verbose_name="User",
     )
-    joined_at = models.DateTimeField(
-        auto_now_add=True,
-        verbose_name="Joined At"
-    )
+    joined_at = models.DateTimeField(auto_now_add=True, verbose_name="Joined At")
     role = models.CharField(
-        max_length=20,
-        choices=ROLE_TYPE_CHOICES,
-        default="member",
-        verbose_name="Role"
+        max_length=20, choices=ROLE_TYPE_CHOICES, default="member", verbose_name="Role"
     )
 
     class Meta:
