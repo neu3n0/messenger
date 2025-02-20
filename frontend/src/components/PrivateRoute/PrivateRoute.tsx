@@ -4,7 +4,7 @@ import { useAuthStore } from '@/stores/authStore';
 
 const PrivateRoute: React.FC = () => {
   const { isAuthenticated } = useAuthStore();
-  console.log(isAuthenticated);
+  console.log("isAuthenticated: ", isAuthenticated);
   return isAuthenticated ? <Outlet /> : <Navigate to="/login" />;
 };
 

@@ -8,7 +8,7 @@ import TestAppPage from '@/pages/TestAppPage/TestAppPage';
 import MainPage from '@/pages/MainPage/MainPage';
 import LoginPage from '@/pages/LoginPage/LoginPage';
 import PrivateRoute from '@/components/PrivateRoute/PrivateRoute';
-import { fetchTestApps } from '@/api/testAppApi';
+import { retrieveProfile } from '@/api/userApi';
 import { useAuthStore } from '@/stores/authStore';
 
 export default function App() {
@@ -22,10 +22,10 @@ export default function App() {
     // the server will return the profile data.
     async function checkAuth() {
       try {
-        console.log("LOGIN")
-        fetchTestApps();
+        const profile = await retrieveProfile();
         // If the request is successful, update Zustand: the user is authorised.
-        setAuth(true, "kek");
+        setAuth(true, profile.username);
+        console.log("username: ", profile.username);
       } catch (error) {
         // If 401 clear (logout) state
         logout();
@@ -46,9 +46,9 @@ export default function App() {
       <HashRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/test_app" element={<TestAppPage />} />
           <Route element={<PrivateRoute />}>
-            <Route path="/" element={<MainPage />} />
-            <Route path="/test_app" element={<TestAppPage />} />
+            <Route path="/*" element={<MainPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/login" />} />
         </Routes>

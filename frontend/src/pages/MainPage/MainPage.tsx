@@ -9,7 +9,6 @@ const MainPage: React.FC = () => {
     <>
       <LeftSidebar />
       <Routes>
-        <Route path="/" element={<ChatPlaceholder />} />
         <Route path="/:user_id/*" element={<Chat />} />
         <Route path="*" element={<ChatPlaceholder />} />
       </Routes>
