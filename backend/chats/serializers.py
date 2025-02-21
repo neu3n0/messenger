@@ -20,6 +20,42 @@ class ParticipantSerializer(serializers.ModelSerializer):
         )
 
 
+class LastMessageSerializer(serializers.ModelSerializer):
+    sender_username = serializers.ReadOnlyField(source="sender.username")
+
+    class Meta:
+        model = Message
+        fields = (
+            "id",
+            "content",
+            "created_at",
+            "sender_username",
+        )
+        read_only_fields = fields
+
+
+class MessageSerializer(serializers.ModelSerializer):
+    sender_username = serializers.ReadOnlyField(source="sender.username")
+
+    class Meta:
+        model = Message
+        fields = (
+            "id",
+            "chat",
+            "sender",
+            "sender_username",
+            "content",
+            "created_at",
+            "is_read",
+            "is_edited",
+        )
+        read_only_fields = (
+            "id",
+            "created_at",
+            "is_edited",
+        )
+
+
 class ChatListSerializer(serializers.ModelSerializer):
     last_message = serializers.SerializerMethodField()
 
@@ -57,40 +93,4 @@ class ChatSerializer(serializers.ModelSerializer):
         read_only_fields = (
             "id",
             "created_at",
-        )
-
-
-class LastMessageSerializer(serializers.ModelSerializer):
-    sender_username = serializers.ReadOnlyField(source="sender.username")
-
-    class Meta:
-        model = Message
-        fields = (
-            "id",
-            "content",
-            "created_at",
-            "sender_username",
-        )
-        read_only_fields = fields
-
-
-class MessageSerializer(serializers.ModelSerializer):
-    sender_username = serializers.ReadOnlyField(source="sender.username")
-
-    class Meta:
-        model = Message
-        fields = (
-            "id",
-            "chat",
-            "sender",
-            "sender_username",
-            "content",
-            "created_at",
-            "is_read",
-            "is_edited",
-        )
-        read_only_fields = (
-            "id",
-            "created_at",
-            "is_edited",
         )
