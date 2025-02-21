@@ -19,13 +19,22 @@ class Chat(models.Model):
         default="direct",
         verbose_name="Chat Type",
     )
-
     title = models.CharField(max_length=255, verbose_name="Chat Title")
     description = models.TextField(blank=True, null=True, verbose_name="Description")
     participants = models.ManyToManyField(
         User, through="Participant", related_name="chats", verbose_name="Participants"
     )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")
+
+    # Fields to denormalise the last message
+    last_message = models.ForeignKey(
+        "Message",  # string to avoid cyclic dependency
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",  # don't create feedback
+    )
+    last_message_time = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         verbose_name = "Chat"
@@ -63,12 +72,17 @@ class Participant(models.Model):
     Participant model
     """
 
-    ROLE_TYPE_CHOICES = [
+    ROLE_TYPE_CHOICES = (
         ("admin", "Admin"),
         ("moderator", "Moderator"),
         ("member", "Member"),
         ("subscriber", "Subscriber"),
-    ]
+    )
+    INVITATION_STATUS_CHOICES = (
+        ("pending", "Pending"),
+        ("accepted", "Accepted"),
+        ("rejected", "Rejected"),
+    )
 
     chat = models.ForeignKey(
         Chat,
@@ -86,6 +100,13 @@ class Participant(models.Model):
     role = models.CharField(
         max_length=20, choices=ROLE_TYPE_CHOICES, default="member", verbose_name="Role"
     )
+    invitation_status = models.CharField(
+        max_length=20,
+        choices=INVITATION_STATUS_CHOICES,
+        default="accepted",
+        verbose_name="Invitation Status",
+    )
+    is_blocked = models.BooleanField(default=False, verbose_name="Is Blocked")
 
     class Meta:
         verbose_name = "Participant"

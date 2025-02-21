@@ -49,7 +49,7 @@ INSTALLED_APPS += [
     "test_app",
     "users",
     "authentication",
-    # 'chats',
+    'chats',
 ]
 
 MIDDLEWARE = [
