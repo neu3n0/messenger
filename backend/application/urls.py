@@ -31,4 +31,5 @@ urlpatterns = [
     path("api/logout/", LogoutView.as_view(), name="logout"),
     path("api/test_app/", include("test_app.urls")),
     path("api/users/", include("users.urls")),
+    path("api/chats/", include("chats.urls")),
 ]
