@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Chat, Participant, Message
+from .models import Chat, Participant, Message, ChannelSettings
 
 
 class ParticipantSerializer(serializers.ModelSerializer):
@@ -56,8 +56,22 @@ class MessageSerializer(serializers.ModelSerializer):
         )
 
 
+class ChannelSettingsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ChannelSettings
+        fields = (
+            "is_public",
+            "is_paid",
+            "monthly_price",
+        )
+        read_only_fields = fields
+
+
 class ChatListSerializer(serializers.ModelSerializer):
     last_message = serializers.SerializerMethodField()
+    channel_settings = ChannelSettingsSerializer(
+        source="channel_settings", read_only=True, allow_null=True
+    )
 
     def get_last_message(self, obj):
         if obj.last_message:
@@ -71,6 +85,7 @@ class ChatListSerializer(serializers.ModelSerializer):
             "chat_type",
             "title",
             "last_message",
+            "channel_settings",
         )
         read_only_fields = fields
 
@@ -78,6 +93,9 @@ class ChatListSerializer(serializers.ModelSerializer):
 class ChatSerializer(serializers.ModelSerializer):
     participants = ParticipantSerializer(
         many=True, read_only=True, source="chat_participants"
+    )
+    channel_settings = ChannelSettingsSerializer(
+        source="channel_settings", read_only=True, allow_null=True
     )
 
     class Meta:
@@ -89,6 +107,7 @@ class ChatSerializer(serializers.ModelSerializer):
             "description",
             "participants",
             "created_at",
+            "channel_settings",
         )
         read_only_fields = (
             "id",

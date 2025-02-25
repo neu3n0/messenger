@@ -1,10 +1,12 @@
 from django.db import models
 from users.models import User
+from decimal import Decimal
 
 
 class Chat(models.Model):
     """
-    Chat model
+    Universal Chat model for direct, group, and channel chats
+    The type of chat is determined by the chat_type field
     """
 
     CHAT_TYPE_CHOICES = (
@@ -22,7 +24,10 @@ class Chat(models.Model):
     title = models.CharField(max_length=255, verbose_name="Chat Title")
     description = models.TextField(blank=True, null=True, verbose_name="Description")
     participants = models.ManyToManyField(
-        User, through="Participant", related_name="chats", verbose_name="Participants"
+        User,
+        through="Participant",
+        related_name="chats",
+        verbose_name="Participants",
     )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")
 
@@ -32,9 +37,12 @@ class Chat(models.Model):
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
-        related_name="+",  # don't create feedback
+        related_name="+",  # no backward relation
+        verbose_name="Last Message",
     )
-    last_message_time = models.DateTimeField(null=True, blank=True)
+    last_message_time = models.DateTimeField(
+        null=True, blank=True, verbose_name="Last Message Time"
+    )
 
     class Meta:
         verbose_name = "Chat"
@@ -43,11 +51,14 @@ class Chat(models.Model):
 
 class Message(models.Model):
     """
-    Message model
+    Message model - stores messages sent in a chat
     """
 
     chat = models.ForeignKey(
-        Chat, on_delete=models.CASCADE, related_name="messages", verbose_name="Chat"
+        Chat,
+        on_delete=models.CASCADE,
+        related_name="messages",
+        verbose_name="Chat",
     )
     sender = models.ForeignKey(
         User,
@@ -69,7 +80,10 @@ class Message(models.Model):
 
 class Participant(models.Model):
     """
-    Participant model
+    Participant model - links a user to a chat and stores their role,
+    invitation status, and whether they are blocked
+    The role field includes "admin", "moderator", "member", and "subscriber"
+    "subscriber" is typically used in channels for read-only subscribers
     """
 
     ROLE_TYPE_CHOICES = (
@@ -98,7 +112,10 @@ class Participant(models.Model):
     )
     joined_at = models.DateTimeField(auto_now_add=True, verbose_name="Joined At")
     role = models.CharField(
-        max_length=20, choices=ROLE_TYPE_CHOICES, default="member", verbose_name="Role"
+        max_length=20,
+        choices=ROLE_TYPE_CHOICES,
+        default="member",
+        verbose_name="Role",
     )
     invitation_status = models.CharField(
         max_length=20,
@@ -112,3 +129,29 @@ class Participant(models.Model):
         verbose_name = "Participant"
         verbose_name_plural = "Participants"
         unique_together = (("chat", "user"),)
+
+
+class ChannelSettings(models.Model):
+    """
+    ChannelSettings - stores additional settings for a channel.
+    Linked via OneToOneField to a Chat object with chat_type = "channel".
+    Fields:
+      - is_public: True if channel is open, False if closed (only invited users can join).
+      - is_paid: True if channel requires payment.
+      - monthly_price: Price for subscription.
+    """
+
+    chat = models.OneToOneField(
+        Chat,
+        on_delete=models.CASCADE,
+        related_name="channel_settings",
+        verbose_name="Channel Settings",
+    )
+    is_public = models.BooleanField(default=True, verbose_name="Is Public")
+    is_paid = models.BooleanField(default=False, verbose_name="Is Paid Channel")
+    monthly_price = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        verbose_name="Monthly Price",
+    )
