@@ -30,6 +30,7 @@ class LastMessageSerializer(serializers.ModelSerializer):
             "content",
             "created_at",
             "sender_username",
+            "is_read",
         )
         read_only_fields = fields
 

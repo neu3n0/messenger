@@ -44,6 +44,13 @@ class Chat(models.Model):
         null=True, blank=True, verbose_name="Last Message Time"
     )
 
+    def get_title(self, current_user):
+        if self.chat_type == "direct":
+            for participant in self.chat_participants.all():
+                if participant.user != current_user:
+                    return participant.user.username
+        return self.title
+
     class Meta:
         verbose_name = "Chat"
         verbose_name_plural = "Chats"
@@ -155,3 +162,7 @@ class ChannelSettings(models.Model):
         default=Decimal("0.00"),
         verbose_name="Monthly Price",
     )
+
+    class Meta:
+        verbose_name = "Channel Settings"
+        verbose_name_plural = "Channel Settings"
