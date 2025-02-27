@@ -1,21 +1,29 @@
 # Желаемый функционал
 
-- Что можно делать с чатом:
+- CHAT'S API:
   - Создание чата: /api/chats/ (POST)
   - Получение списка чатов: /api/chats/ (GET)
   - Получение информации о чате: /api/chats/<int:pk>/ (GET)
   - Обновлении инофрмации о чате: /api/chats/<int:pk>/ (PATCH/PUT)
   - Удаление чата: /api/chats/<int:pk>/ (DELETE)
+  
+  
   - ? Приглашение человека в чат
   - ? Вступление человек в чат, если он открытый
   - ? Создание ссылки на чат (для дальнейшего вступления или приглашения)
   - ? Покинуть чат
   - ? Заблокировать чат
 
-- Что можно делать с сообщением:
+- MESSAGE'S API:
   - Создание сообщения в чате: /api/chats/<int:chat_id>/messages/ (POST)
   - Получения списка сообщений из чата: /api/chats/<int:chat_id>/messages/ (GET)
+  - Получение информации о сообщении в чате chat_id: /api/chats/<int:chat_id>/messages/<int:pk> (GET)
+  - Обновлении информации о сообщении: /api/chats/<int:chat_id>/messages/<int:pk> (PATCH/PUT)
+  - Удаление сообщения: /api/chats/<int:chat_id>/messages/<int:pk> (DELETE)
+
+
   - ? Получение списка всех сообщений с каким-то фильтром: /api/messages/ (GET)
+
 
 
 
@@ -49,26 +57,33 @@
     ]
     
 
-- Создание чата (POST): (!!! тут наверное не нужен такой детальный ответ)
+- Создание чата (POST):
   Input:
-    Если chat_type == "direct" надо передать в body user_id для второго частника:
+    Если chat_type == "direct" надо передать в body обязательно передать в new_participants ровно одного участника:
     {
       chat_type: "direct";
       title: string;
-      user_id: number;  // ID второго участника
+      new_participants: [
+        int
+      ];
       description?: string;
     }
     Если chat_type == "channel" можно передать доп. поля в body для настройки канал:
     {
       chat_type: "channel";
       title: string;
+      new_participants: [
+        int
+      ];
       description?: string;
-      is_public?: boolean;
-      is_paid?: boolean;
-      monthly_price?: string;
+      channel_settings: null | {
+        is_public: boolean;
+        is_paid: booleand;
+        monthly_price: string;
+      };
     }
   Output:
-    В ответ получает объект типа ChatSerializer:
+    В ответ получает объект типа ChatCreateSerializer:
     {
       id: number;
       chat_type: "direct" | "group" | "channel";

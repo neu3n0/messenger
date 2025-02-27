@@ -51,6 +51,31 @@ class Chat(models.Model):
                     return participant.user.username
         return self.title
 
+    def add_participant(self, user, role, invitation_status, is_blocked=False):
+        participant, created = Participant.objects.get_or_create(
+            chat=self,
+            user=user,
+            defaults={
+                "role": role,
+                "invitation_status": invitation_status,
+                "is_blocked": is_blocked,
+            },
+        )
+        if not created:
+            updated = False
+            if participant.role != role:
+                participant.role = role
+                updated = True
+            if participant.invitation_status != invitation_status:
+                participant.invitation_status = invitation_status
+                updated = True
+            if participant.is_blocked != is_blocked:
+                participant.is_blocked = is_blocked
+                updated = True
+            if updated:
+                participant.save()
+        return participant
+
     class Meta:
         verbose_name = "Chat"
         verbose_name_plural = "Chats"
@@ -156,12 +181,7 @@ class ChannelSettings(models.Model):
     )
     is_public = models.BooleanField(default=True, verbose_name="Is Public")
     is_paid = models.BooleanField(default=False, verbose_name="Is Paid Channel")
-    monthly_price = models.DecimalField(
-        max_digits=8,
-        decimal_places=2,
-        default=Decimal("0.00"),
-        verbose_name="Monthly Price",
-    )
+    monthly_price = models.FloatField(default=0, verbose_name="Monthly Price")
 
     class Meta:
         verbose_name = "Channel Settings"

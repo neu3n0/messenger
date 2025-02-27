@@ -3,10 +3,14 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
-from users.models import User
 
-from .models import Chat, Message, Participant, ChannelSettings
-from .serializers import ChatListSerializer, ChatSerializer, MessageSerializer
+from .models import Chat, Message, Participant
+from .serializers import (
+    ChatListSerializer,
+    ChatCreateSerializer,
+    ChatSerializer,
+    MessageSerializer,
+)
 
 
 class ChatListCreateView(generics.ListCreateAPIView):
@@ -18,79 +22,29 @@ class ChatListCreateView(generics.ListCreateAPIView):
 
     POST /api/chats/:
       - Creates a new chat (direct, group, channel)
-      - If chat_type is "direct", expects a user_id for the second participant
-      - For channel chats, additional ChannelSettings may be provided.
-      - Returns a detailed view using ChatSerializer
+      - Uses ChatSerializer
     """
 
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Chat.objects.filter(
-            chat_participants__user=self.request.user,
-            chat_participants__invitation_status__in=["accepted", "pending"],
-        ).order_by("-last_message_time", "-id")
+        return (
+            Chat.objects.filter(
+                chat_participants__user=self.request.user,
+                chat_participants__invitation_status__in=["accepted", "pending"],
+            )
+            .select_related("channel_settings", "last_message")
+            .order_by("-last_message_time", "-id")
+        )
 
     def get_serializer_class(self):
         if self.request.method == "GET":
             return ChatListSerializer
-        return ChatSerializer
+        return ChatCreateSerializer
 
     def perform_create(self, serializer):
-        chat_type = self.request.data.get("chat_type", "group")
-        chat = serializer.save(chat_type=chat_type)
-        if chat_type == "direct":
-            # Expected user_id for the second member
-            user2_id = self.request.data.get("user_id")
-            if not user2_id:
-                return  # In a real project, raise a ValidationError
-            user2 = get_object_or_404(User, pk=user2_id)
-            # Both participants become accepted
-            Participant.objects.create(
-                chat=chat,
-                user=self.request.user,
-                role="member",
-                invitation_status="accepted",
-            )
-            Participant.objects.create(
-                chat=chat,
-                user=user2,
-                role="member",
-                invitation_status="accepted",
-            )
-        else:
-            # For group and channel chats, the creator becomes admin
-            Participant.objects.create(
-                chat=chat,
-                user=self.request.user,
-                role="admin",
-                invitation_status="accepted",
-            )
-            participants = self.request.data.get("participants")
-            if participants:
-                for user_id in participants:
-                    if int(user2) == self.request.user.id:
-                        continue
-                    if not chat.chat_participants.filter(user=user_id).exists():
-                        _user = User.objects.filter(pk=user_id).first()
-                        Participant.objects.create(
-                            chat=chat,
-                            user=_user,
-                            role="member",
-                            invitation_status="pending",
-                        )
-            # For channel chats, automatically create ChannelSettings from request data if provided
-            if chat_type == "channel":
-                # Extract channel settings from request data
-                is_public = self.request.data.get("is_public", True)
-                is_paid = self.request.data.get("is_paid", False)
-                monthly_price = self.request.data.get("monthly_price", "0.00")
-                ChannelSettings.objects.create(
-                    chat=chat,
-                    is_public=is_public,
-                    is_paid=is_paid,
-                    monthly_price=monthly_price,
-                )
+        serializer.context["request"] = self.request
+        serializer.save()
 
 
 class ChatRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
@@ -119,20 +73,19 @@ class ChatRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
         chat = self.get_object()
         participant = get_object_or_404(Participant, chat=chat, user=request.user)
         if participant.invitation_status == "pending":
-            # If invitation status is pending, return a trimmed version (without description and participants)
+            # If invitation status is pending, return a trimmed version
             data = {
                 "id": chat.id,
                 "chat_type": chat.chat_type,
                 "title": chat.title,
-                "description": None,
-                "participants": [],
-                "created_at": chat.created_at,
             }
             return Response(data, status=status.HTTP_200_OK)
         return super().retrieve(request, *args, **kwargs)
 
     def perform_update(self, serializer):
         chat = self.get_object()
+        if chat.chat_type == "direct":
+            raise PermissionDenied("Direct chats cannot be updated.")
         participant = Participant.objects.get(chat=chat, user=self.request.user)
         if participant.invitation_status != "accepted" or participant.role not in [
             "admin",
@@ -148,6 +101,41 @@ class ChatRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
         instance.delete()
 
 
+#################################
+#################################
+#################################
+#################################
+#################################
+#################################
+#################################
+#################################
+#################################
+#################################
+#################################
+#################################
+#################################
+#################################
+#################################
+#################################
+#################################
+#################################
+#################################
+#################################
+#################################
+#################################
+#################################
+#################################
+#################################
+#################################
+#################################
+#################################
+#################################
+#################################
+#################################
+#################################
+#################################
+#################################
+#################################
 class MessageListCreateView(generics.ListCreateAPIView):
     """
     GET /api/chats/<chat_id>/messages/:
