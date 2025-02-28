@@ -147,9 +147,6 @@ class ChatCreateSerializer(serializers.ModelSerializer):
                 .filter(chat_participants__user=new_participants[0])
                 .exists()
             )
-            print(user)
-            print(new_participants[0])
-            print(existing)
 
             if existing:
                 raise serializers.ValidationError(
@@ -189,7 +186,9 @@ class ChatCreateSerializer(serializers.ModelSerializer):
             settings = ChannelSettings.objects.create(
                 chat=chat, **channel_settings_data
             )
-            inv_status = "accepted" if settings.is_public else "pending"
+            # Пока убрал, эту логику потом продумаю
+            # inv_status = "accepted" if settings.is_public else "pending"
+            inv_status = "accepted"
             for participant in new_participants_data:
                 if participant.id != user.id:
                     chat.add_participant(
@@ -241,10 +240,6 @@ class ChatSerializer(serializers.ModelSerializer):
                     "channel_settings": "Channel settings can only be provided for channel chats."
                 }
             )
-        # if self.instance.chat_type == "direct" and attrs.get("title"):
-        #     raise serializers.ValidationError(
-        #         {"title": "Title can't be provided for direct chats."}
-        #     )
         return attrs
 
     def update(self, instance, validated_data):

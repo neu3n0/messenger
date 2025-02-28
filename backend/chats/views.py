@@ -3,6 +3,8 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
+from rest_framework.exceptions import PermissionDenied
+
 
 from .models import Chat, Message, Participant
 from .serializers import (
@@ -11,7 +13,6 @@ from .serializers import (
     ChatSerializer,
     MessageSerializer,
 )
-
 
 class ChatListCreateView(generics.ListCreateAPIView):
     """
@@ -34,6 +35,7 @@ class ChatListCreateView(generics.ListCreateAPIView):
                 chat_participants__invitation_status__in=["accepted", "pending"],
             )
             .select_related("channel_settings", "last_message")
+            .prefetch_related("chat_participants")
             .order_by("-last_message_time", "-id")
         )
 
@@ -71,7 +73,7 @@ class ChatRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
 
     def retrieve(self, request, *args, **kwargs):
         chat = self.get_object()
-        participant = get_object_or_404(Participant, chat=chat, user=request.user)
+        participant = chat.chat_participants.get(user=request.user)
         if participant.invitation_status == "pending":
             # If invitation status is pending, return a trimmed version
             data = {
@@ -87,17 +89,27 @@ class ChatRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
         if chat.chat_type == "direct":
             raise PermissionDenied("Direct chats cannot be updated.")
         participant = Participant.objects.get(chat=chat, user=self.request.user)
-        if participant.invitation_status != "accepted" or participant.role not in [
+        if participant.invitation_status != "accepted" or participant.role not in (
             "admin",
             "moderator",
-        ]:
-            raise PermissionError("You do not have permission to update this chat.")
+        ):
+            raise PermissionDenied("You do not have permission to update this chat.")
         serializer.save()
 
     def perform_destroy(self, instance):
-        participant = Participant.objects.get(chat=instance, user=self.request.user)
-        if participant.invitation_status != "accepted" or participant.role != "admin":
-            raise PermissionError("You do not have permission to delete this chat.")
+        if instance.chat_type == "direct":
+            raise PermissionDenied("Direct chats cannot be deleted")
+        try:
+            participant = Participant.objects.get(chat=instance, user=self.request.user)
+            if (
+                participant.invitation_status != "accepted"
+                or participant.role != "admin"
+            ):
+                raise PermissionDenied(
+                    "You do not have permission to delete this chat."
+                )
+        except Participant.DoesNotExist:
+            raise PermissionDenied("You are not a participant of this chat.")
         instance.delete()
 
 

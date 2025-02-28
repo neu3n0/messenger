@@ -68,18 +68,31 @@
       ];
       description?: string;
     }
+    Если chat_type == "group":
+    {
+      chat_type: "channel";
+      title: string;
+      new_participants?: [
+        int,
+        int,
+        ...
+      ];
+      description?: string;
+    }
     Если chat_type == "channel" можно передать доп. поля в body для настройки канал:
     {
       chat_type: "channel";
       title: string;
-      new_participants: [
-        int
+      new_participants?: [
+        int,
+        int,
+        ...
       ];
       description?: string;
-      channel_settings: null | {
-        is_public: boolean;
-        is_paid: booleand;
-        monthly_price: string;
+      channel_settings?: null | {
+        is_public?: boolean;
+        is_paid?: booleand;
+        monthly_price?: string;
       };
     }
   Output:
@@ -110,7 +123,7 @@
     }
 
 # ChatRetrieveUpdateDestroyView: /api/chats/<int:pk>/
-- Обращаться может только пользователь состоящий в участиника и имеюший статус "pending" | "accepted"
+- Обращаться может только пользователь состоящий в участиниках и имеюший статус "pending" | "accepted"
 
 - Детальная информация о конкретном чате по pk (GET):
   Input: {}
@@ -141,11 +154,16 @@
       };
     }
 
-- Обновление данных чата (PATCH/PUT), могут отправлять только люди с role == "admin" | "moderator" и status == "accepted" (!!! тут надо еще на самом деле дать менять channel_settings, если chat_type == "channel". Мб стоит рассмотреть тут вариант приглашения через изменения participants???????)
+- Обновление данных чата (PATCH/PUT), могут отправлять только люди с role == "admin" | "moderator" и status == "accepted" и если chat_type != "direct"
   Input:
     {
       title? :string;
       description?: string;
+      channel_settings?: {
+        is_public?: boolean;
+        is_paid?: booleand;
+        monthly_price?: string;
+      };
     }
   Output: 
     В ответ получает объект типа ChatSerializer:
@@ -174,9 +192,13 @@
       };
     }
 
-- Удаление чата по id, могут делать только участники с role == "admin" и status == "accepted"
+- Удаление чата по id (DELETE), могут делать только участники с role == "admin" и status == "accepted"  и если chat_type != "direct"
   Input: {}
   Output: {} | error? | success?
+
+
+
+
 
 # MessageListCreateView /api/chats/<int:chat_id>/messages/
 

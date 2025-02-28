@@ -46,9 +46,8 @@ class Chat(models.Model):
 
     def get_title(self, current_user):
         if self.chat_type == "direct":
-            for participant in self.chat_participants.all():
-                if participant.user != current_user:
-                    return participant.user.username
+            participant = self.chat_participants.exclude(user=current_user).first()
+            return participant.user.username if participant else "Unknown"
         return self.title
 
     def add_participant(self, user, role, invitation_status, is_blocked=False):
