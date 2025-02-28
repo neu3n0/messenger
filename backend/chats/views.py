@@ -1,10 +1,12 @@
-from rest_framework import generics, status
+from rest_framework import viewsets, generics, status
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 from rest_framework.exceptions import PermissionDenied
 
+from users.models import User
 
 from .models import Chat, Message, Participant
 from .serializers import (
@@ -14,68 +16,81 @@ from .serializers import (
     MessageSerializer,
 )
 
-class ChatListCreateView(generics.ListCreateAPIView):
+from .permissions import IsAcceptedParticipant, IsAdmin, IsAdminOrModerator
+
+
+class ChatViewSet(viewsets.ModelViewSet):
     """
-    GET /api/chats/:
+    list: GET /api/chats/
       - Returns a list of chats (direct, group, channel) where the user's invitation_status is accepted or pending
       - Uses ChatListSerializer
       - Chats are ordered by -last_message_time, then by -id
 
-    POST /api/chats/:
+    create: POST /api/chats/
       - Creates a new chat (direct, group, channel)
       - Uses ChatSerializer
-    """
 
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        return (
-            Chat.objects.filter(
-                chat_participants__user=self.request.user,
-                chat_participants__invitation_status__in=["accepted", "pending"],
-            )
-            .select_related("channel_settings", "last_message")
-            .prefetch_related("chat_participants")
-            .order_by("-last_message_time", "-id")
-        )
-
-    def get_serializer_class(self):
-        if self.request.method == "GET":
-            return ChatListSerializer
-        return ChatCreateSerializer
-
-    def perform_create(self, serializer):
-        serializer.context["request"] = self.request
-        serializer.save()
-
-
-class ChatRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
-    """
-    GET /api/chats/<pk>/:
+    retrieve: GET /api/chats/<pk>
       - Returns detailed information about a chat (using ChatSerializer).
       - If the user's invitation_status is pending, a trimmed representation (without description and participants) is returned.
 
-    PATCH/PUT /api/chats/<pk>/:
+    update: PATCH/PUT /api/chats/<pk>/
       - Only (admin | moderator) & accepted.
 
-    DELETE /api/chats/<pk>/:
+    destroy: DELETE /api/chats/<pk>/
       - Only admin & accepted.
+
+    invite: POST /api/chats/<pk>/invite/
+      - Invitation api endpoint
     """
 
     permission_classes = [IsAuthenticated]
-    serializer_class = ChatSerializer
 
     def get_queryset(self):
-        return Chat.objects.filter(
+        qs = Chat.objects.filter(
             chat_participants__user=self.request.user,
             chat_participants__invitation_status__in=["accepted", "pending"],
         )
+        if self.action == "list":
+            qs = qs.select_related("channel_settings", "last_message")
+            qs = qs.prefetch_related("chat_participants")
+            qs = qs.order_by("-last_message_time", "-id")
+        elif self.action == "retrieve":
+            qs = qs.select_related("channel_settings")
+            qs = qs.prefetch_related("chat_participants")
+        return qs
+
+    def get_serializer_class(self):
+        if self.action == "list":
+            return ChatListSerializer
+        elif self.action == "create":
+            return ChatCreateSerializer
+        return ChatSerializer
+
+    def get_permissions(self):
+        permissions = super().get_permissions()
+        if self.action in ["update", "partial_update", "destroy", "invite"]:
+            permissions.append(IsAcceptedParticipant())
+        if self.action in ["update", "partial_update"]:
+            permissions.append(IsAdminOrModerator())
+        if self.action in ["destroy"]:
+            permissions.append(IsAdmin())
+        return permissions
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.context["request"] = request
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def perform_create(self, serializer):
+        serializer.save()
 
     def retrieve(self, request, *args, **kwargs):
         chat = self.get_object()
         participant = chat.chat_participants.get(user=request.user)
         if participant.invitation_status == "pending":
-            # If invitation status is pending, return a trimmed version
             data = {
                 "id": chat.id,
                 "chat_type": chat.chat_type,
@@ -84,33 +99,101 @@ class ChatRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
             return Response(data, status=status.HTTP_200_OK)
         return super().retrieve(request, *args, **kwargs)
 
-    def perform_update(self, serializer):
+    def update(self, request, *args, **kwargs):
+        """
+        IsAdminOrModerator and IsAcceptedParticipant
+        """
         chat = self.get_object()
         if chat.chat_type == "direct":
             raise PermissionDenied("Direct chats cannot be updated.")
-        participant = Participant.objects.get(chat=chat, user=self.request.user)
-        if participant.invitation_status != "accepted" or participant.role not in (
-            "admin",
-            "moderator",
-        ):
-            raise PermissionDenied("You do not have permission to update this chat.")
-        serializer.save()
+        return super().update(request, *args, **kwargs)
 
-    def perform_destroy(self, instance):
-        if instance.chat_type == "direct":
-            raise PermissionDenied("Direct chats cannot be deleted")
-        try:
-            participant = Participant.objects.get(chat=instance, user=self.request.user)
-            if (
-                participant.invitation_status != "accepted"
-                or participant.role != "admin"
-            ):
-                raise PermissionDenied(
-                    "You do not have permission to delete this chat."
+    def partial_update(self, request, *args, **kwargs):
+        return self.update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        """
+        IsAdmin and IsAcceptedParticipant
+        """
+        chat = self.get_object()
+        if chat.chat_type == "direct":
+            raise PermissionDenied("Direct chats cannot be deleted.")
+        chat.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=["post"])
+    def invite(self, request, pk=None):
+        """
+        IsAcceptedParticipant
+        """
+        chat = self.get_object()
+        if chat.chat_type == "direct":
+            return Response(
+                {"detail": "Cannot invite to direct chat."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        current_participant = chat.chat_participants.get(user=request.user)
+        if (
+            chat.chat_type == "channel"
+            and chat.channel_settings.is_public is False
+            and current_participant.role not in ("admin", "moderator")
+        ):
+            raise PermissionDenied(
+                "Only admin or moderator can invite users to a closed channel"
+            )
+        user_id = request.data.get("user_id")
+        if not user_id:
+            return Response(
+                {"detail": "user_id is required"}, status=status.HTTP_400_BAD_REQUEST
+            )
+        invitee = get_object_or_404(User, pk=user_id)
+        if Participant.objects.filter(chat=chat, user=invitee).exists():
+            return Response(
+                {"detail": "User already in chat or invited."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        role = "subscriber" if chat.chat_type == "channel" else "member"
+        Participant.objects.create(
+            chat=chat,
+            user=invitee,
+            role=role,
+            invitation_status="pending",
+        )
+        return Response(
+            {"detail": "User invited with status 'pending'."},
+            status=status.HTTP_201_CREATED,
+        )
+
+        @action(detail=True, methods=["post"])
+        def accept_invite(self, request, pk=None):
+            chat = self.get_object()
+            participant = chat.chat_participants.get(user=request.user)
+            if participant.invitation_status != "pending":
+                return Response(
+                    {"detail": "No pending invite found."},
+                    status=status.HTTP_400_BAD_REQUEST,
                 )
-        except Participant.DoesNotExist:
-            raise PermissionDenied("You are not a participant of this chat.")
-        instance.delete()
+            participant.invitation_status = "rejected"
+            participant.save()
+            return Response(
+                {"detail": "Invitation rejected."}, status=status.HTTP_200_OK
+            )
+
+        @action(detail=True, methods=["post"])
+        def reject_invite(self, request, pk=None):
+            chat = self.get_object()
+            participant = chat.chat_participants.get(user=request.user)
+            if participant.invitation_status != "pending":
+                return Response(
+                    {"detail": "No pending invite found."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            participant.invitation_status = "rejected"
+            participant.save()
+            return Response(
+                {"detail": "Invitation rejected."}, status=status.HTTP_200_OK
+            )
 
 
 #################################
@@ -246,53 +329,6 @@ class MessageRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
 
 
 # ========================== INVITE / ACCEPT / REJECT / LEAVE / BLOCK ==========================
-
-
-class InviteUserView(APIView):
-    """
-    POST /api/chats/<chat_id>/invite/:
-      - Только admin (accepted).
-      - Создаём participant со статусом 'pending' (если group/channel).
-      - Не для direct.
-    """
-
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request, chat_id):
-        from users.models import User
-
-        chat = get_object_or_404(Chat, pk=chat_id)
-        admin_participant = get_object_or_404(
-            Participant, chat=chat, user=request.user, invitation_status="accepted"
-        )
-        if admin_participant.role != "admin":
-            return Response(
-                {"detail": "Only admin can invite."}, status=status.HTTP_403_FORBIDDEN
-            )
-
-        if chat.chat_type == "direct":
-            return Response(
-                {"detail": "Cannot invite to direct chat."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        user_id = request.data.get("user_id")
-        if not user_id:
-            return Response({"detail": "user_id is required"}, status=400)
-
-        invitee = get_object_or_404(User, pk=user_id)
-
-        if Participant.objects.filter(chat=chat, user=invitee).exists():
-            return Response({"detail": "User already in chat or invited."}, status=400)
-
-        role = request.data.get("role", "member")
-        if chat.chat_type == "channel":
-            role = "subscriber"
-
-        Participant.objects.create(
-            chat=chat, user=invitee, role=role, invitation_status="pending"
-        )
-        return Response({"detail": "User invited (pending)."}, status=201)
 
 
 class AcceptInviteView(APIView):

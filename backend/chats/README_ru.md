@@ -30,8 +30,9 @@
 
 
 
-# ChatListCreateView: /api/chats/
+## Chat
 
+# list: GET /api/chats/
 - Список чатов (GET), где у пользователя invitation_status = accepted или pending.
   Input: {}
   Output:
@@ -56,7 +57,7 @@
       },
     ]
     
-
+# create: POST /api/chats/
 - Создание чата (POST):
   Input:
     Если chat_type == "direct" надо передать в body обязательно передать в new_participants ровно одного участника:
@@ -122,9 +123,10 @@
       };
     }
 
-# ChatRetrieveUpdateDestroyView: /api/chats/<int:pk>/
+
 - Обращаться может только пользователь состоящий в участиниках и имеюший статус "pending" | "accepted"
 
+# retrieve GET /api/chats/<int:pk>/
 - Детальная информация о конкретном чате по pk (GET):
   Input: {}
   Output: 
@@ -154,6 +156,7 @@
       };
     }
 
+# update PATCH/PUT /api/chats/<int:pk>/
 - Обновление данных чата (PATCH/PUT), могут отправлять только люди с role == "admin" | "moderator" и status == "accepted" и если chat_type != "direct"
   Input:
     {
@@ -192,6 +195,7 @@
       };
     }
 
+# destroy DELETE /api/chats/<int:pk>/
 - Удаление чата по id (DELETE), могут делать только участники с role == "admin" и status == "accepted"  и если chat_type != "direct"
   Input: {}
   Output: {} | error? | success?

@@ -1,7 +1,8 @@
-from django.urls import path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
 from .views import (
-    ChatListCreateView,
-    ChatRetrieveUpdateDestroyView,
+    # ChatListCreateView,
+    # ChatRetrieveUpdateDestroyView,
     MessageListCreateView,
     MessageRetrieveUpdateDestroyView,
     InviteUserView,
@@ -10,12 +11,15 @@ from .views import (
     LeaveChatView,
     BlockUserView,
     UnblockUserView,
+    ChatViewSet,
 )
+
+router = DefaultRouter()
+router.register(r"", ChatViewSet, basename="chat")
 
 urlpatterns = [
     # Чаты
-    path("", ChatListCreateView.as_view(), name="chat-list-create"),
-    path("<int:pk>/", ChatRetrieveUpdateDestroyView.as_view(), name="chat-detail"),
+    path("", include(router.urls)),
     # Сообщения (вложенный ресурс: /chats/<chat_id>/messages/)
     path(
         "<int:chat_id>/messages/",
@@ -26,18 +30,6 @@ urlpatterns = [
         "<int:chat_id>/messages/<int:pk>/",
         MessageRetrieveUpdateDestroyView.as_view(),
         name="message-detail",
-    ),
-    # Приглашения
-    path("<int:chat_id>/invite/", InviteUserView.as_view(), name="chat-invite"),
-    path(
-        "<int:chat_id>/invite/accept/",
-        AcceptInviteView.as_view(),
-        name="chat-invite-accept",
-    ),
-    path(
-        "<int:chat_id>/invite/reject/",
-        RejectInviteView.as_view(),
-        name="chat-invite-reject",
     ),
     # Выход
     path("<int:chat_id>/leave/", LeaveChatView.as_view(), name="chat-leave"),
