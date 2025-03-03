@@ -1,39 +1,27 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import (
-    # ChatListCreateView,
-    # ChatRetrieveUpdateDestroyView,
-    MessageListCreateView,
-    MessageRetrieveUpdateDestroyView,
-    InviteUserView,
-    AcceptInviteView,
-    RejectInviteView,
-    LeaveChatView,
-    BlockUserView,
-    UnblockUserView,
-    ChatViewSet,
-)
+from .views import MessageViewSet, ChatViewSet
 
 router = DefaultRouter()
 router.register(r"", ChatViewSet, basename="chat")
 
+message_list = MessageViewSet.as_view(
+    {
+        "get": "list",
+        "post": "create",
+    }
+)
+message_detail = MessageViewSet.as_view(
+    {
+        "get": "retrieve",
+        "put": "update",
+        "patch": "partial_update",
+        "delete": "destroy",
+    }
+)
+
 urlpatterns = [
-    # Чаты
     path("", include(router.urls)),
-    # Сообщения (вложенный ресурс: /chats/<chat_id>/messages/)
-    path(
-        "<int:chat_id>/messages/",
-        MessageListCreateView.as_view(),
-        name="message-list-create",
-    ),
-    path(
-        "<int:chat_id>/messages/<int:pk>/",
-        MessageRetrieveUpdateDestroyView.as_view(),
-        name="message-detail",
-    ),
-    # Выход
-    path("<int:chat_id>/leave/", LeaveChatView.as_view(), name="chat-leave"),
-    # Блокировка
-    path("<int:chat_id>/block/", BlockUserView.as_view(), name="chat-block"),
-    path("<int:chat_id>/unblock/", UnblockUserView.as_view(), name="chat-unblock"),
+    path("<int:chat_id>/messages/", message_list, name="message-list"),
+    path("<int:chat_id>/messages/<int:pk>/", message_detail, name="message-detail"),
 ]

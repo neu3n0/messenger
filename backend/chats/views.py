@@ -1,14 +1,13 @@
-from rest_framework import viewsets, generics, status
+from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 from rest_framework.exceptions import PermissionDenied
 
 from users.models import User
 
-from .models import Chat, Message, Participant
+from .models import Chat, Participant
 from .serializers import (
     ChatListSerializer,
     ChatCreateSerializer,
@@ -16,7 +15,13 @@ from .serializers import (
     MessageSerializer,
 )
 
-from .permissions import IsAcceptedParticipant, IsAdmin, IsAdminOrModerator
+from .permissions import (
+    IsAcceptedParticipant,
+    IsAdmin,
+    IsAdminOrModerator,
+    IsMessageSender,
+    CanDeleteMessage,
+)
 
 
 class ChatViewSet(viewsets.ModelViewSet):
@@ -69,7 +74,7 @@ class ChatViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         permissions = super().get_permissions()
-        if self.action in ["update", "partial_update", "destroy", "invite"]:
+        if self.action in ["update", "partial_update", "destroy", "invite", "leave"]:
             permissions.append(IsAcceptedParticipant())
         if self.action in ["update", "partial_update"]:
             permissions.append(IsAdminOrModerator())
@@ -174,7 +179,7 @@ class ChatViewSet(viewsets.ModelViewSet):
                     {"detail": "No pending invite found."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            participant.invitation_status = "rejected"
+            participant.invitation_status = "accepted"
             participant.save()
             return Response(
                 {"detail": "Invitation rejected."}, status=status.HTTP_200_OK
@@ -195,271 +200,160 @@ class ChatViewSet(viewsets.ModelViewSet):
                 {"detail": "Invitation rejected."}, status=status.HTTP_200_OK
             )
 
+        @action(detail=True, methods=["post"])
+        def leave(self, requset, pk=None):
+            chat = self.get_object()
+            if chat.chat_type == "direct":
+                return Response(
+                    {"detail": "Cannot leave a direct chat."},
+                    status.HTTP_400_BAD_REQUEST,
+                )
+            participant = chat.chat_participants.get(user=request.user)
+            participant.delete()
+            return Response(
+                {"detail": "You have left the chat."}, status=status.HTTP_200_OK
+            )
 
-#################################
-#################################
-#################################
-#################################
-#################################
-#################################
-#################################
-#################################
-#################################
-#################################
-#################################
-#################################
-#################################
-#################################
-#################################
-#################################
-#################################
-#################################
-#################################
-#################################
-#################################
-#################################
-#################################
-#################################
-#################################
-#################################
-#################################
-#################################
-#################################
-#################################
-#################################
-#################################
-#################################
-#################################
-#################################
-class MessageListCreateView(generics.ListCreateAPIView):
+
+class MessageViewSet(viewsets.ModelViewSet):
     """
-    GET /api/chats/<chat_id>/messages/:
-    - Returns a list of messages in the specified chat (accepted & is_blocked=False).
+    list: GET /api/chats/<int:chat_id>/messages/
+      - Returns a list of messages for the specified chat
 
-    POST /api/chats/<chat_id>/messages/:
-      - Creates a new message.
-      - After creation, updates chat.last_message and chat.last_message_time.
+    create: POST /api/chats/<int:chat_id>/messages/
+      - Creates a new message in the specified chat
+
+    retrieve: GET api/chats/<int:chat_id>/messages/<int:pk>
+      - Retrieves a specific message from the specified chat
+
+    update: PATCH/PUT api/chats/<int:chat_id>/messages/<int:pk>
+      - Updates an existing message
+
+    destroy: DELETE api/chats/<int:chat_id>/messages/<int:pk>
+      - Delete a specific message
     """
 
-    permission_classes = [IsAuthenticated]
     serializer_class = MessageSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_chat(self):
+        chat_id = self.kwargs.get("chat_id")
+        try:
+            chat = Chat.objects.get(
+                pk=chat_id,
+                chat_participants__user=self.request.user,
+                chat_participants__invitation_status="accepted",
+                chat_participants__is_blocked=False,
+            )
+        except Chat.DoesNotExist:
+            raise PermissionDenied("You aren't participant or you were blocked.")
+        return chat
 
     def get_queryset(self):
-        chat_id = self.kwargs.get("chat_id")
-        # Ensure the user is a participant with accepted status and not blocked.
-        chat = get_object_or_404(
-            Chat,
-            pk=chat_id,
-            chat_participants__user=self.request.user,
-            chat_participants__invitation_status="accepted",
-            chat_participants__is_blocked=False,
-        )
-        return Message.objects.filter(chat=chat)
+        chat = self.get_chat()
+        qs = chat.messages.all().select_related("sender")
+        return qs
+
+    def get_permissions(self):
+        permissions = super().get_permissions()
+        if self.action in ["update", "partial_update"]:
+            permissions.append(IsMessageSender())
+        if self.action == "destroy":
+            permissions.append(CanDeleteMessage())
+        return permissions
 
     def perform_create(self, serializer):
-        chat_id = self.kwargs.get("chat_id")
-        chat = get_object_or_404(
-            Chat,
-            pk=chat_id,
-            chat_participants__user=self.request.user,
-            chat_participants__invitation_status="accepted",
-            chat_participants__is_blocked=False,
-        )
-        message = serializer.save(chat=chat, sender=self.request.user)
-
-        # Update last_message, last_message_time
+        chat = self.get_chat()
+        message = serializer.save(sender=self.request.user, chat=chat)
         chat.last_message = message
         chat.last_message_time = message.created_at
         chat.save(update_fields=["last_message", "last_message_time"])
 
-
-class MessageRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
-    """
-    GET /api/chats/<chat_id>/messages/<pk>/:
-      - Returns detailed information about a specific message (accepted & not blocked)
-
-    PATCH/PUT:
-      - Allows update if the user is the sender
-
-    DELETE:
-      - Deletes the message.
-      - If the deleted message was chat.last_message, recalculates a new last message.
-    """
-
-    permission_classes = [IsAuthenticated]
-    serializer_class = MessageSerializer
-
-    def get_queryset(self):
-        chat_id = self.kwargs.get("chat_id")
-        return Message.objects.filter(
-            chat__id=chat_id,
-            chat__chat_participants__user=self.request.user,
-            chat__chat_participants__invitation_status="accepted",
-            chat__chat_participants__is_blocked=False,
-        )
-
-    def perform_update(self, serializer):
-        message = self.get_object()
-        if message.sender == self.request.user:
-            serializer.save(is_edited=True)
-        else:
-            raise PermissionError("You do not have permission to edit this message.")
-
     def perform_destroy(self, instance):
-        participant = Participant.objects.get(
-            chat=instance.chat, user=self.request.user
-        )
-        # Allow deletion if the user is the sender or is admin/moderator.
-        if instance.sender == self.request.user or participant.role in [
-            "admin",
-            "moderator",
-        ]:
-            chat = instance.chat
-            message_id = instance.id
-            instance.delete()
-
-            # Update last message if its neccesary
-            if chat.last_message_id == message_id:
-                new_last = chat.messages.order_by("-created_at").first()
-                chat.last_message = new_last
-                chat.last_message_time = new_last.created_at if new_last else None
-                chat.save(update_fields=["last_message", "last_message_time"])
-        else:
-            raise PermissionError("You do not have permission to delete this message.")
+        chat = instance.chat
+        message_id = instance.id
+        instance.delete()
+        if chat.last_message_id == message_id:
+            new_last = chat.messages.order_by("-created_at").first()
+            chat.last_message = new_last
+            chat.last_message_time = new_last.created_at if new_last else None
+            chat.save(update_fields=["last_message", "last_message_time"])
 
 
-# ========================== INVITE / ACCEPT / REJECT / LEAVE / BLOCK ==========================
+# class BlockUserView(APIView):
+#     """
+#     POST /api/chats/<chat_id>/block/:
+#       - Заблокировать user_id.
+#       - group/channel: только admin/moderator
+#       - direct: любой из двух
+#     """
+
+#     permission_classes = [IsAuthenticated]
+
+#     def post(self, request, chat_id):
+#         from users.models import User
+
+#         chat = get_object_or_404(Chat, pk=chat_id)
+#         user_id = request.data.get("user_id")
+#         if not user_id:
+#             return Response({"detail": "user_id is required"}, status=400)
+#         user_to_block = get_object_or_404(User, pk=user_id)
+
+#         current_participant = get_object_or_404(
+#             Participant,
+#             chat=chat,
+#             user=request.user,
+#             invitation_status="accepted",
+#             is_blocked=False,
+#         )
+#         blocked_participant = get_object_or_404(
+#             Participant, chat=chat, user=user_to_block
+#         )
+
+#         if chat.chat_type in ["group", "channel"]:
+#             if current_participant.role not in ["admin", "moderator"]:
+#                 return Response({"detail": "No permission to block."}, status=403)
+#         # direct - любой может блокировать
+
+#         blocked_participant.is_blocked = True
+#         blocked_participant.save()
+#         return Response({"detail": f"User {user_id} blocked."}, status=200)
 
 
-class AcceptInviteView(APIView):
-    """
-    POST /api/chats/<chat_id>/invite/accept/:
-      - Пользователь (pending) => accepted.
-    """
+# class UnblockUserView(APIView):
+#     """
+#     POST /api/chats/<chat_id>/unblock/:
+#       - Разблокировать user_id
+#       - group/channel: admin/moderator
+#       - direct: любой
+#     """
 
-    permission_classes = [IsAuthenticated]
+#     permission_classes = [IsAuthenticated]
 
-    def post(self, request, chat_id):
-        chat = get_object_or_404(Chat, pk=chat_id)
-        participant = get_object_or_404(
-            Participant, chat=chat, user=request.user, invitation_status="pending"
-        )
-        participant.invitation_status = "accepted"
-        participant.save()
-        return Response({"detail": "Invitation accepted."}, status=200)
+#     def post(self, request, chat_id):
+#         from users.models import User
 
+#         chat = get_object_or_404(Chat, pk=chat_id)
+#         user_id = request.data.get("user_id")
+#         if not user_id:
+#             return Response({"detail": "user_id is required"}, status=400)
+#         user_to_unblock = get_object_or_404(User, pk=user_id)
 
-class RejectInviteView(APIView):
-    """
-    POST /api/chats/<chat_id>/invite/reject/:
-      - pending => rejected.
-    """
+#         current_participant = get_object_or_404(
+#             Participant,
+#             chat=chat,
+#             user=request.user,
+#             invitation_status="accepted",
+#             is_blocked=False,
+#         )
+#         blocked_participant = get_object_or_404(
+#             Participant, chat=chat, user=user_to_unblock
+#         )
 
-    permission_classes = [IsAuthenticated]
+#         if chat.chat_type in ["group", "channel"]:
+#             if current_participant.role not in ["admin", "moderator"]:
+#                 return Response({"detail": "No permission to unblock."}, status=403)
 
-    def post(self, request, chat_id):
-        chat = get_object_or_404(Chat, pk=chat_id)
-        participant = get_object_or_404(
-            Participant, chat=chat, user=request.user, invitation_status="pending"
-        )
-        participant.invitation_status = "rejected"
-        participant.save()
-        return Response({"detail": "Invitation rejected."}, status=200)
-
-
-class LeaveChatView(APIView):
-    """
-    POST /api/chats/<chat_id>/leave/:
-      - Удаляем запись participant (только если group/channel).
-      - direct - нельзя уйти (логика по вашему усмотрению).
-    """
-
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request, chat_id):
-        chat = get_object_or_404(Chat, pk=chat_id)
-        if chat.chat_type == "direct":
-            return Response({"detail": "Cannot leave a direct chat."}, status=400)
-
-        participant = get_object_or_404(Participant, chat=chat, user=request.user)
-        participant.delete()
-        return Response({"detail": "You have left the chat."}, status=200)
-
-
-class BlockUserView(APIView):
-    """
-    POST /api/chats/<chat_id>/block/:
-      - Заблокировать user_id.
-      - group/channel: только admin/moderator
-      - direct: любой из двух
-    """
-
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request, chat_id):
-        from users.models import User
-
-        chat = get_object_or_404(Chat, pk=chat_id)
-        user_id = request.data.get("user_id")
-        if not user_id:
-            return Response({"detail": "user_id is required"}, status=400)
-        user_to_block = get_object_or_404(User, pk=user_id)
-
-        current_participant = get_object_or_404(
-            Participant,
-            chat=chat,
-            user=request.user,
-            invitation_status="accepted",
-            is_blocked=False,
-        )
-        blocked_participant = get_object_or_404(
-            Participant, chat=chat, user=user_to_block
-        )
-
-        if chat.chat_type in ["group", "channel"]:
-            if current_participant.role not in ["admin", "moderator"]:
-                return Response({"detail": "No permission to block."}, status=403)
-        # direct - любой может блокировать
-
-        blocked_participant.is_blocked = True
-        blocked_participant.save()
-        return Response({"detail": f"User {user_id} blocked."}, status=200)
-
-
-class UnblockUserView(APIView):
-    """
-    POST /api/chats/<chat_id>/unblock/:
-      - Разблокировать user_id
-      - group/channel: admin/moderator
-      - direct: любой
-    """
-
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request, chat_id):
-        from users.models import User
-
-        chat = get_object_or_404(Chat, pk=chat_id)
-        user_id = request.data.get("user_id")
-        if not user_id:
-            return Response({"detail": "user_id is required"}, status=400)
-        user_to_unblock = get_object_or_404(User, pk=user_id)
-
-        current_participant = get_object_or_404(
-            Participant,
-            chat=chat,
-            user=request.user,
-            invitation_status="accepted",
-            is_blocked=False,
-        )
-        blocked_participant = get_object_or_404(
-            Participant, chat=chat, user=user_to_unblock
-        )
-
-        if chat.chat_type in ["group", "channel"]:
-            if current_participant.role not in ["admin", "moderator"]:
-                return Response({"detail": "No permission to unblock."}, status=403)
-
-        blocked_participant.is_blocked = False
-        blocked_participant.save()
-        return Response({"detail": f"User {user_id} unblocked."}, status=200)
+#         blocked_participant.is_blocked = False
+#         blocked_participant.save()
+#         return Response({"detail": f"User {user_id} unblocked."}, status=200)

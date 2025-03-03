@@ -21,9 +21,21 @@ class MessageSerializer(serializers.ModelSerializer):
         )
         read_only_fields = (
             "id",
+            "chat",
+            "sender",
+            "sender_username",
             "created_at",
+            "is_read",
             "is_edited",
         )
+
+    def update(self, instance, validated_data):
+        if (
+            "content" in validated_data
+            and instance.content != validated_data["content"]
+        ):
+            instance.is_edited = True
+        return super().update(instance, validated_data)
 
 
 class ParticipantSerializer(serializers.ModelSerializer):
