@@ -13,6 +13,7 @@ services:
       - "./.env.dev"
     depends_on:
       - db-postgres
+      - centrifugo
     volumes:
       - ./backend:/usr/src/app
       # - /usr/src/app/__pycache__/ # mb it's needed in prod
@@ -57,6 +58,19 @@ services:
     volumes:
       - ./frontend:/usr/src/app
       - /usr/src/app/node_modules
+
+  centrifugo:
+    container_name: messenger-centrifugo
+    image: centrifugo/centrifugo:latest
+    volumes:
+      - ./centrifugo/config.json:/centrifugo/config.json
+    command: centrifugo -c /centrifugo/config.json
+    ports:
+      - 8001:8000
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
 
 volumes:
   pg_data:

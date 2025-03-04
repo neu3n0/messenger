@@ -1,3 +1,7 @@
+import json
+import requests
+from django.conf import settings
+
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -170,49 +174,45 @@ class ChatViewSet(viewsets.ModelViewSet):
             status=status.HTTP_201_CREATED,
         )
 
-        @action(detail=True, methods=["post"])
-        def accept_invite(self, request, pk=None):
-            chat = self.get_object()
-            participant = chat.chat_participants.get(user=request.user)
-            if participant.invitation_status != "pending":
-                return Response(
-                    {"detail": "No pending invite found."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            participant.invitation_status = "accepted"
-            participant.save()
+    @action(detail=True, methods=["post"])
+    def accept_invite(self, request, pk=None):
+        chat = self.get_object()
+        participant = chat.chat_participants.get(user=request.user)
+        if participant.invitation_status != "pending":
             return Response(
-                {"detail": "Invitation rejected."}, status=status.HTTP_200_OK
+                {"detail": "No pending invite found."},
+                status=status.HTTP_400_BAD_REQUEST,
             )
+        participant.invitation_status = "accepted"
+        participant.save()
+        return Response({"detail": "Invitation accepted."}, status=status.HTTP_200_OK)
 
-        @action(detail=True, methods=["post"])
-        def reject_invite(self, request, pk=None):
-            chat = self.get_object()
-            participant = chat.chat_participants.get(user=request.user)
-            if participant.invitation_status != "pending":
-                return Response(
-                    {"detail": "No pending invite found."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            participant.invitation_status = "rejected"
-            participant.save()
+    @action(detail=True, methods=["post"])
+    def reject_invite(self, request, pk=None):
+        chat = self.get_object()
+        participant = chat.chat_participants.get(user=request.user)
+        if participant.invitation_status != "pending":
             return Response(
-                {"detail": "Invitation rejected."}, status=status.HTTP_200_OK
+                {"detail": "No pending invite found."},
+                status=status.HTTP_400_BAD_REQUEST,
             )
+        participant.invitation_status = "rejected"
+        participant.save()
+        return Response({"detail": "Invitation rejected."}, status=status.HTTP_200_OK)
 
-        @action(detail=True, methods=["post"])
-        def leave(self, requset, pk=None):
-            chat = self.get_object()
-            if chat.chat_type == "direct":
-                return Response(
-                    {"detail": "Cannot leave a direct chat."},
-                    status.HTTP_400_BAD_REQUEST,
-                )
-            participant = chat.chat_participants.get(user=request.user)
-            participant.delete()
+    @action(detail=True, methods=["post"])
+    def leave(self, request, pk=None):
+        chat = self.get_object()
+        if chat.chat_type == "direct":
             return Response(
-                {"detail": "You have left the chat."}, status=status.HTTP_200_OK
+                {"detail": "Cannot leave a direct chat."},
+                status.HTTP_400_BAD_REQUEST,
             )
+        participant = chat.chat_participants.get(user=request.user)
+        participant.delete()
+        return Response(
+            {"detail": "You have left the chat."}, status=status.HTTP_200_OK
+        )
 
 
 class MessageViewSet(viewsets.ModelViewSet):

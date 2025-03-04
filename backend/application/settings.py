@@ -20,6 +20,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
+CENTRIFUGO_HTTP_API_URL = os.environ.get("CENTRIFUGO_HTTP_API_URL", "")
+CENTRIFUGO_API_KEY = os.environ.get("CENTRIFUGO_API_KEY", get_random_secret_key())
+
 SECRET_KEY = os.environ.get("SECRET_KEY", get_random_secret_key())
 DEBUG = int(os.environ.get("DEBUG", default=0))
 ALLOWED_HOSTS = (
@@ -49,7 +52,7 @@ INSTALLED_APPS += [
     "test_app",
     "users",
     "authentication",
-    'chats',
+    "chats",
 ]
 
 MIDDLEWARE = [
