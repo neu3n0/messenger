@@ -22,6 +22,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 CENTRIFUGO_HTTP_API_URL = os.environ.get("CENTRIFUGO_HTTP_API_URL", "")
 CENTRIFUGO_API_KEY = os.environ.get("CENTRIFUGO_API_KEY", get_random_secret_key())
+CENTRIFUGO_TOKEN_SECRET = os.environ.get("CENTRIFUGO_TOKEN_SECRET", get_random_secret_key())
+
 
 SECRET_KEY = os.environ.get("SECRET_KEY", get_random_secret_key())
 DEBUG = int(os.environ.get("DEBUG", default=0))

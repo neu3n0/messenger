@@ -22,6 +22,8 @@ from authentication.views import (
     CustomTokenObtainPairView,
     CustomTokenRefreshView,
     LogoutView,
+    get_connection_token,
+    get_subscription_token
 )
 
 urlpatterns = [
@@ -29,6 +31,8 @@ urlpatterns = [
     path("api/token/", CustomTokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/token/refresh/", CustomTokenRefreshView.as_view(), name="token_refresh"),
     path("api/logout/", LogoutView.as_view(), name="logout"),
+    path("api/centrifugo_token/connection/", get_connection_token.as_view(), name="get-connection-token"),
+    path("api/centrifugo_token/subscription/", get_subscription_token.as_view(), name="get-subscription-token"),
     path("api/test_app/", include("test_app.urls")),
     path("api/users/", include("users.urls")),
     path("api/chats/", include("chats.urls")),

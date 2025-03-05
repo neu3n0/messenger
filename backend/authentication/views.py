@@ -8,6 +8,39 @@ from rest_framework_simplejwt.serializers import (
 from django.conf import settings
 
 
+import jwt
+import time
+
+class get_connection_token(APIView):
+    def get(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return Response({'detail': 'unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        token_claims = {
+            'sub': str(request.user.pk),
+            'exp': int(time.time()) + 120
+        }
+        token = jwt.encode(token_claims, settings.CENTRIFUGO_TOKEN_SECRET)
+        return Response({"token": token}, status=status.HTTP_200_OK)
+
+
+class get_subscription_token(APIView):
+    def get(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return Response({'detail': 'unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        channel = request.GET.get('channel')
+        if channel != f'personal:{request.user.pk}':
+            return Response({'detail': 'permission denied'}, status=status.HTTP_403_FORBIDDEN)
+
+        token_claims = {
+            'sub': str(request.user.pk),
+            'exp': int(time.time()) + 300,
+            'channel': channel
+        }
+        token = jwt.encode(token_claims, settings.CENTRIFUGO_TOKEN_SECRET)
+
+        return Response({'token': token}, status=status.HTTP_200_OK)
 class CustomTokenObtainPairView(APIView):
     """
     View for login: checks credentials, generates JWT pair and sets tokens in httpOnly cookies.
