@@ -3,6 +3,9 @@ import './App.css';
 import { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 
+import {
+  Centrifuge, PublicationContext
+} from 'centrifuge';
 
 import TestAppPage from '@/pages/TestAppPage/TestAppPage';
 import MainPage from '@/pages/MainPage/MainPage';
@@ -10,9 +13,10 @@ import LoginPage from '@/pages/LoginPage/LoginPage';
 import PrivateRoute from '@/components/PrivateRoute/PrivateRoute';
 import { retrieveProfile } from '@/api/userApi';
 import { useAuthStore } from '@/stores/authStore';
+import { getCentrifugoToken, getSubscriptionToken } from './api/centrifugo';
 
 export default function App() {
-  const { setAuth, logout } = useAuthStore();
+  const { setAuth, logout, isAuthenticated } = useAuthStore();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -36,6 +40,45 @@ export default function App() {
     checkAuth();
   }, [setAuth, logout]);
 
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+
+    let centrifuge: Centrifuge | null = null;
+
+    const init = async () => {
+      centrifuge = new Centrifuge("ws://localhost/connection/websocket", {
+        getToken: getCentrifugoToken,
+        debug: true
+      })
+      centrifuge.connect();
+      console.log("centrifuge connected");
+    }
+
+    init();
+
+    const personalChannel = "personal:" + 1;
+    const getPersonalChannelSubscriptionToken = async () => {
+      return getSubscriptionToken(personalChannel)
+    }
+
+    const sub = centrifuge.newSubscription(personalChannel, {
+      getToken: getPersonalChannelSubscriptionToken
+    })
+    sub.on('publication', (ctx: PublicationContext) => {
+      console.log("KEK: ", ctx.data)
+    })
+
+    sub.subscribe()
+    return () => {
+      if (centrifuge) {
+        console.log("disconnect Centrifuge")
+        centrifuge.disconnect()
+      }
+    }
+  }, [isAuthenticated])
 
   if (loading) {
     return <div>Loading...</div>;
